@@ -1,0 +1,24 @@
+name: MercariSizer
+options:
+  bundleIdPrefix: com.pndshch
+  deploymentTarget:
+    iOS: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+targets:
+  MercariSizer:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - MercariSizer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pndshch.MercariSizer
+        INFOPLIST_FILE: MercariSizer/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.9"

@@ -1,0 +1,365 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0B8C7938C593E578105B0D68 /* ObjectMeasurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 566D1A922CA5EDA14039F323 /* ObjectMeasurement.swift */; };
+		0E6DF87A223E567C90280ACF /* ARMeasureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9E42D7AA7F5AB131F90DE0 /* ARMeasureView.swift */; };
+		299E7CC212044AE83EB64269 /* MeasurementViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1AB5EA561B677DC0C2E563 /* MeasurementViewModel.swift */; };
+		3ADB0CB484CC0B3705F0CE4B /* MercariSizerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55057E17956B86DFCE3DB731 /* MercariSizerApp.swift */; };
+		7035447F14F437ED9549C763 /* InstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81C3119ADC1D2FDE733949B /* InstructionView.swift */; };
+		77A6D999E189E8D09866CC0B /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211775B3F26CED9CB4EA7A63 /* ResultView.swift */; };
+		9AA10542A3F97CB550307F4B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A852C69E0856916BC3A3A21E /* ContentView.swift */; };
+		B4B82BDAE6414323C3AA6C33 /* ARViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3CD00CBCBBAB6D7180DA729 /* ARViewController.swift */; };
+		CC1C4F9194EBBDE6BDAC5C43 /* MercariShipping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668733300E3464F1DB1E0E2A /* MercariShipping.swift */; };
+		FB5F793CA69B5019E2321C4E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E6AFC0C45425E27CA99965CD /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		211775B3F26CED9CB4EA7A63 /* ResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultView.swift; sourceTree = "<group>"; };
+		55057E17956B86DFCE3DB731 /* MercariSizerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MercariSizerApp.swift; sourceTree = "<group>"; };
+		566D1A922CA5EDA14039F323 /* ObjectMeasurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectMeasurement.swift; sourceTree = "<group>"; };
+		668733300E3464F1DB1E0E2A /* MercariShipping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MercariShipping.swift; sourceTree = "<group>"; };
+		7D0056FC02B0989B15016F49 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A0C4222057BECF8A8F029B5C /* MercariSizer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MercariSizer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A852C69E0856916BC3A3A21E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B3CD00CBCBBAB6D7180DA729 /* ARViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARViewController.swift; sourceTree = "<group>"; };
+		C81C3119ADC1D2FDE733949B /* InstructionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionView.swift; sourceTree = "<group>"; };
+		E6AFC0C45425E27CA99965CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FA1AB5EA561B677DC0C2E563 /* MeasurementViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementViewModel.swift; sourceTree = "<group>"; };
+		FE9E42D7AA7F5AB131F90DE0 /* ARMeasureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARMeasureView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		26214B445C23350393995688 /* MercariSizer */ = {
+			isa = PBXGroup;
+			children = (
+				E6AFC0C45425E27CA99965CD /* Assets.xcassets */,
+				7D0056FC02B0989B15016F49 /* Info.plist */,
+				59C74654B463D861BB69CFF5 /* App */,
+				E6CAC83DD3A4F491BF4B485F /* AR */,
+				5FD8600C9CE8D52DC362E71A /* Models */,
+				E95C567D50AB53072E79C904 /* Views */,
+			);
+			path = MercariSizer;
+			sourceTree = "<group>";
+		};
+		4D7E90BDA45CA071F3F80AD6 = {
+			isa = PBXGroup;
+			children = (
+				26214B445C23350393995688 /* MercariSizer */,
+				C9F1EF08F728167555F7CF88 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		59C74654B463D861BB69CFF5 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				55057E17956B86DFCE3DB731 /* MercariSizerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		5FD8600C9CE8D52DC362E71A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				FA1AB5EA561B677DC0C2E563 /* MeasurementViewModel.swift */,
+				668733300E3464F1DB1E0E2A /* MercariShipping.swift */,
+				566D1A922CA5EDA14039F323 /* ObjectMeasurement.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		C9F1EF08F728167555F7CF88 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A0C4222057BECF8A8F029B5C /* MercariSizer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E6CAC83DD3A4F491BF4B485F /* AR */ = {
+			isa = PBXGroup;
+			children = (
+				B3CD00CBCBBAB6D7180DA729 /* ARViewController.swift */,
+			);
+			path = AR;
+			sourceTree = "<group>";
+		};
+		E95C567D50AB53072E79C904 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				FE9E42D7AA7F5AB131F90DE0 /* ARMeasureView.swift */,
+				A852C69E0856916BC3A3A21E /* ContentView.swift */,
+				C81C3119ADC1D2FDE733949B /* InstructionView.swift */,
+				211775B3F26CED9CB4EA7A63 /* ResultView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7C9C9DB2B0E79F1CC07ECB67 /* MercariSizer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F4481FAD8A523C5AE5CDADAC /* Build configuration list for PBXNativeTarget "MercariSizer" */;
+			buildPhases = (
+				388B3CF5AD1B3FAB274D55A3 /* Sources */,
+				C26804922A6EB915A4D9FA5C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MercariSizer;
+			packageProductDependencies = (
+			);
+			productName = MercariSizer;
+			productReference = A0C4222057BECF8A8F029B5C /* MercariSizer.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2945FDFF63E91AFD62E3F581 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = FC9B7B05BA4E4097D0BBC570 /* Build configuration list for PBXProject "MercariSizer" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4D7E90BDA45CA071F3F80AD6;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C9F1EF08F728167555F7CF88 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7C9C9DB2B0E79F1CC07ECB67 /* MercariSizer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C26804922A6EB915A4D9FA5C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FB5F793CA69B5019E2321C4E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		388B3CF5AD1B3FAB274D55A3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0E6DF87A223E567C90280ACF /* ARMeasureView.swift in Sources */,
+				B4B82BDAE6414323C3AA6C33 /* ARViewController.swift in Sources */,
+				9AA10542A3F97CB550307F4B /* ContentView.swift in Sources */,
+				7035447F14F437ED9549C763 /* InstructionView.swift in Sources */,
+				299E7CC212044AE83EB64269 /* MeasurementViewModel.swift in Sources */,
+				CC1C4F9194EBBDE6BDAC5C43 /* MercariShipping.swift in Sources */,
+				3ADB0CB484CC0B3705F0CE4B /* MercariSizerApp.swift in Sources */,
+				0B8C7938C593E578105B0D68 /* ObjectMeasurement.swift in Sources */,
+				77A6D999E189E8D09866CC0B /* ResultView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0525156F11F125A4F690BC86 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		29A1B641B533A0D026EB8909 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		5B043372700B47DDA2549258 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = MercariSizer/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pndshch.MercariSizer;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		897E514B210FAA9664877FBD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = MercariSizer/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pndshch.MercariSizer;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F4481FAD8A523C5AE5CDADAC /* Build configuration list for PBXNativeTarget "MercariSizer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				897E514B210FAA9664877FBD /* Debug */,
+				5B043372700B47DDA2549258 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FC9B7B05BA4E4097D0BBC570 /* Build configuration list for PBXProject "MercariSizer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0525156F11F125A4F690BC86 /* Debug */,
+				29A1B641B533A0D026EB8909 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2945FDFF63E91AFD62E3F581 /* Project object */;
+}
