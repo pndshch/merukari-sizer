@@ -3,6 +3,7 @@ import ARKit
 import SceneKit
 import CoreMotion
 import Combine
+import AVFoundation
 
 final class ARViewController: UIViewController, ARSCNViewDelegate {
 
@@ -16,6 +17,7 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
 
     // Calibration
     private let motionManager = CMMotionManager()
+    private let speechSynth = AVSpeechSynthesizer()
     private var calibrationTimer: Timer?
     private var countdownValue = 3
     private var isCountingDown = false
@@ -152,11 +154,18 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
         isCountingDown = true
         countdownValue = 3
         Task { @MainActor in viewModel.calibrationCountdown = 3 }
+        speak("さん")
 
         calibrationTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] t in
             guard let self else { t.invalidate(); return }
             self.countdownValue -= 1
             Task { @MainActor in self.viewModel.calibrationCountdown = self.countdownValue }
+
+            switch self.countdownValue {
+            case 2: self.speak("に")
+            case 1: self.speak("いち")
+            default: break
+            }
 
             if self.countdownValue <= 0 {
                 t.invalidate()
@@ -169,6 +178,7 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
     private func stopCountdown() {
         isCountingDown = false
         calibrationTimer?.invalidate()
+        speechSynth.stopSpeaking(at: .immediate)
         countdownValue = 3
         Task { @MainActor in viewModel.calibrationCountdown = 3 }
     }
@@ -178,8 +188,34 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
         // 机に伏せた状態: カメラ位置 ≈ 床 + 本体厚み(8mm)
         let cameraY = frame.camera.transform.columns.3.y
         let floorY  = cameraY - 0.008
-        haptic(.light)
+
+        // 画面が見えない状態でも「今！」がわかるように: 音声 + 強いバイブ×3
+        speak("はなして！")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        }
+
         Task { @MainActor in viewModel.calibrated(floorY: floorY) }
+    }
+
+    // MARK: - Speech
+
+    private func speak(_ text: String) {
+        // AVAudioSession をスピーカー出力に固定（机に伏せても聞こえるように）
+        try? AVAudioSession.sharedInstance().setCategory(.playback, options: .defaultToSpeaker)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        speechSynth.stopSpeaking(at: .immediate)
+        let u = AVSpeechUtterance(string: text)
+        u.voice = AVSpeechSynthesisVoice(language: "ja-JP")
+        u.rate  = 0.42
+        u.pitchMultiplier = 1.1
+        speechSynth.speak(u)
     }
 
     // MARK: - Tap
