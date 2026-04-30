@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MercariSizer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111; color: #fff; font-family: -apple-system, sans-serif; overflow: hidden; }
+
+  #app { width: 100vw; height: 100vh; position: relative; }
+
+  /* ── Start screen ── */
+  #start-screen {
+    position: absolute; inset: 0; z-index: 100;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    gap: 24px; padding: 32px;
+  }
+  #start-screen h1 { font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }
+  #start-screen p  { font-size: 1rem; color: #aaa; text-align: center; line-height: 1.6; max-width: 320px; }
+  .start-btn {
+    background: #e94560; color: #fff; border: none; border-radius: 32px;
+    padding: 16px 40px; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 24px rgba(233,69,96,0.5);
+  }
+  .note { font-size: 0.8rem !important; color: #666 !important; }
+
+  /* ── AR canvas overlay ── */
+  #ar-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* ── Instruction panel ── */
+  #instruction {
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.82); border-radius: 20px;
+    padding: 18px 28px; text-align: center;
+    max-width: min(90vw, 360px);
+    display: none;
+  }
+  #instruction .phase-icon { font-size: 2rem; margin-bottom: 6px; }
+  #instruction .main-text  { font-size: 1rem; font-weight: 600; line-height: 1.5; }
+  #instruction .sub-text   { font-size: 0.82rem; color: #bbb; margin-top: 6px; }
+
+  /* Step dots */
+  .step-dots { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
+  .step-dot {
+    height: 8px; border-radius: 4px; background: rgba(255,255,255,0.25);
+    transition: all 0.3s; width: 8px;
+  }
+  .step-dot.active { background: #e94560; width: 22px; }
+  .step-dot.done   { background: rgba(255,255,255,0.7); }
+
+  /* ── Countdown ring ── */
+  #countdown {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 5rem; font-weight: 900; color: #4caf50;
+    text-shadow: 0 0 40px rgba(76,175,80,0.8);
+    display: none;
+    animation: scalePop 0.3s ease;
+  }
+  @keyframes scalePop { from { transform: translate(-50%,-50%) scale(0.5); } to { transform: translate(-50%,-50%) scale(1); } }
+
+  /* ── Result card ── */
+  #result {
+    position: absolute; inset: 0; z-index: 80;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.85); padding: 32px; gap: 16px;
+  }
+  #result h2 { font-size: 1.6rem; }
+  .dims { font-size: 2rem; font-weight: 700; color: #e94560; }
+  .ship-list { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 8px; }
+  .ship-item {
+    background: rgba(255,255,255,0.08); border-radius: 12px;
+    padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .ship-item .ship-name { font-size: 0.9rem; }
+  .ship-item .ship-price { font-size: 1.1rem; font-weight: 700; color: #4caf50; }
+  .ship-item.no-fit { opacity: 0.4; }
+  .ship-item.no-fit .ship-price { color: #888; }
+  .reset-btn {
+    background: #333; color: #fff; border: none; border-radius: 24px;
+    padding: 12px 32px; font-size: 1rem; cursor: pointer; margin-top: 8px;
+  }
+  #error-msg {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(200,50,50,0.9); border-radius: 12px; padding: 12px 20px;
+    font-size: 0.9rem; display: none; z-index: 200; max-width: 90vw; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Start / permission screen -->
+  <div id="start-screen">
+    <div style="font-size:3rem">📦</div>
+    <h1>MercariSizer</h1>
+    <p>カメラで物体を計測して<br>メルカリの適切な配送サイズをおすすめします</p>
+    <p>使い方: スマホを机に伏せて床高さを記録し、持ち上げて上から角をタップするだけ</p>
+    <button class="start-btn" id="start-btn">計測を始める</button>
+    <p class="note">WebXR対応ブラウザが必要です<br>Chrome / Safari 15.4+</p>
+  </div>
+
+  <!-- Error message -->
+  <div id="error-msg"></div>
+
+  <!-- AR overlay canvas (for dots/lines) -->
+  <canvas id="ar-canvas"></canvas>
+
+  <!-- Instruction panel -->
+  <div id="instruction">
+    <div class="phase-icon" id="phase-icon">📱</div>
+    <div class="main-text" id="main-text"></div>
+    <div class="sub-text"  id="sub-text"></div>
+    <div class="step-dots">
+      <div class="step-dot" id="dot0"></div>
+      <div class="step-dot" id="dot1"></div>
+      <div class="step-dot" id="dot2"></div>
+      <div class="step-dot" id="dot3"></div>
+    </div>
+  </div>
+
+  <!-- Countdown -->
+  <div id="countdown"></div>
+
+  <!-- Result -->
+  <div id="result">
+    <h2>✅ 測定完了</h2>
+    <div class="dims" id="dims-text"></div>
+    <div class="ship-list" id="ship-list"></div>
+    <button class="reset-btn" id="reset-btn">もう一度計測</button>
+  </div>
+
+</div>
+
+<script>
+// ── Shipping sizes (mirrors MercariShipping.swift) ─────────────────────────
+
+const SHIPPING = [
+  { name: 'ネコポス',           price: 210,  fits: (w,l,h) => [w,l,h].sort((a,b)=>b-a)[0]<=31.2 && [w,l,h].sort((a,b)=>b-a)[1]<=22.8 && [w,l,h].sort((a,b)=>b-a)[2]<=3 },
+  { name: '宅急便コンパクト',     price: 520,  fits: (w,l,h) => { let s=[w,l,h].sort((a,b)=>b-a); return s[0]<=24.8 && s[1]<=34 && s[2]<=8; } },
+  { name: '宅急便 60サイズ',     price: 750,  fits: (w,l,h) => w+l+h<=60  && [w,l,h].sort((a,b)=>b-a)[0]<=60 },
+  { name: '宅急便 80サイズ',     price: 870,  fits: (w,l,h) => w+l+h<=80  && [w,l,h].sort((a,b)=>b-a)[0]<=60 },
+  { name: '宅急便 100サイズ',    price: 1050, fits: (w,l,h) => w+l+h<=100 && [w,l,h].sort((a,b)=>b-a)[0]<=60 },
+  { name: '宅急便 120サイズ',    price: 1200, fits: (w,l,h) => w+l+h<=120 && [w,l,h].sort((a,b)=>b-a)[0]<=60 },
+  { name: '宅急便 140サイズ',    price: 1450, fits: (w,l,h) => w+l+h<=140 && [w,l,h].sort((a,b)=>b-a)[0]<=60 },
+  { name: '宅急便 160サイズ',    price: 1700, fits: (w,l,h) => w+l+h<=160 && [w,l,h].sort((a,b)=>b-a)[0]<=60 },
+  { name: 'ゆうパケット',         price: 230,  fits: (w,l,h) => { let s=[w,l,h].sort((a,b)=>b-a); return s[0]<=34 && s[1]<=24.8 && s[2]<=3; } },
+  { name: 'ゆうパック 60サイズ',  price: 770,  fits: (w,l,h) => w+l+h<=60 },
+  { name: 'ゆうパック 80サイズ',  price: 870,  fits: (w,l,h) => w+l+h<=80 },
+  { name: 'ゆうパック 100サイズ', price: 1070, fits: (w,l,h) => w+l+h<=100 },
+];
+
+function recommend(w, l, h) {
+  return SHIPPING.filter(s => s.fits(w, l, h)).sort((a,b) => a.price - b.price);
+}
+
+// ── Speech ─────────────────────────────────────────────────────────────────
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP'; u.rate = 0.9; u.pitch = 1.1;
+  window.speechSynthesis.speak(u);
+}
+
+// ── Vibration ──────────────────────────────────────────────────────────────
+
+function vibrate(pattern) {
+  if ('vibrate' in navigator) navigator.vibrate(pattern);
+}
+
+// ── Phase state machine ────────────────────────────────────────────────────
+
+const Phase = { CALIBRATING:'calibrating', FIRST:'first', SECOND:'second', HEIGHT:'height', COMPLETE:'complete' };
+
+let state = {
+  phase: Phase.CALIBRATING,
+  floorY: 0,         // world-space Y of floor
+  first: null,       // {x,y,z} world
+  second: null,
+  topPt: null,
+  countdown: 3,
+  isCountingDown: false,
+  cdTimer: null,
+};
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+
+const startScreen  = document.getElementById('start-screen');
+const instruction  = document.getElementById('instruction');
+const phaseIcon    = document.getElementById('phase-icon');
+const mainText     = document.getElementById('main-text');
+const subText      = document.getElementById('sub-text');
+const countdownEl  = document.getElementById('countdown');
+const resultEl     = document.getElementById('result');
+const errorEl      = document.getElementById('error-msg');
+const canvas       = document.getElementById('ar-canvas');
+const ctx          = canvas.getContext('2d');
+
+function showError(msg) {
+  errorEl.textContent = msg;
+  errorEl.style.display = 'block';
+  setTimeout(() => { errorEl.style.display = 'none'; }, 5000);
+}
+
+// ── Canvas resize ──────────────────────────────────────────────────────────
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ── UI update ─────────────────────────────────────────────────────────────
+
+function updateUI() {
+  const dots = [0,1,2,3].map(i => document.getElementById('dot'+i));
+
+  switch (state.phase) {
+    case Phase.CALIBRATING:
+      phaseIcon.textContent = '📱';
+      mainText.textContent  = '画面を下にして\n机の上に置いてください';
+      subText.textContent   = '床の高さを自動記録します';
+      setDots(dots, 0);
+      countdownEl.style.display = state.countdown < 3 ? 'block' : 'none';
+      if (state.countdown < 3) countdownEl.textContent = state.countdown || '📐';
+      break;
+    case Phase.FIRST:
+      phaseIcon.textContent = '👆';
+      mainText.textContent  = '持ち上げて上から\n物体の一方の角をタップ';
+      subText.textContent   = '画面中央の丸が角に重なったらタップ';
+      setDots(dots, 1); countdownEl.style.display='none';
+      break;
+    case Phase.SECOND:
+      phaseIcon.textContent = '👆';
+      mainText.textContent  = '対角の角をタップ';
+      subText.textContent   = '底面の反対の角をタップ';
+      setDots(dots, 1);
+      break;
+    case Phase.HEIGHT:
+      phaseIcon.textContent = '↕️';
+      mainText.textContent  = '横から見て\n物体の最上部をタップ';
+      subText.textContent   = '一番高い点にタップ';
+      setDots(dots, 2);
+      break;
+    case Phase.COMPLETE:
+      countdownEl.style.display='none';
+      break;
+  }
+}
+
+function setDots(dots, step) {
+  dots.forEach((d,i) => {
+    d.className = 'step-dot' + (i===step ? ' active' : i<step ? ' done' : '');
+  });
+}
+
+// ── Drawing helpers ────────────────────────────────────────────────────────
+
+const markers = [];   // {sx, sy, color}
+const lines   = [];   // {sx1,sy1,sx2,sy2, color}
+let   crosshair = null;  // {sx, sy}
+
+function drawOverlay() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // lines
+  for (const l of lines) {
+    ctx.beginPath();
+    ctx.moveTo(l.sx1, l.sy1);
+    ctx.lineTo(l.sx2, l.sy2);
+    ctx.strokeStyle = l.color;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  // markers
+  for (const m of markers) {
+    ctx.beginPath();
+    ctx.arc(m.sx, m.sy, 10, 0, Math.PI*2);
+    ctx.fillStyle = m.color;
+    ctx.fill();
+  }
+
+  // crosshair
+  if (crosshair) {
+    const r = 14;
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(crosshair.sx, crosshair.sy, r, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(crosshair.sx - r*1.6, crosshair.sy);
+    ctx.lineTo(crosshair.sx + r*1.6, crosshair.sy);
+    ctx.moveTo(crosshair.sx, crosshair.sy - r*1.6);
+    ctx.lineTo(crosshair.sx, crosshair.sy + r*1.6);
+    ctx.stroke();
+  }
+}
+
+// ── WebXR session ──────────────────────────────────────────────────────────
+
+let xrSession  = null;
+let xrRefSpace = null;
+let xrFrame    = null;
+let xrViewport = null;
+let xrView     = null;
+
+// Accumulated gravity from motion sensor (DeviceMotion)
+let gravityZ = 0;
+
+async function startXR() {
+  if (!('xr' in navigator)) {
+    showError('WebXRが利用できません。Chrome / Safari 15.4+ をお使いください。');
+    return;
+  }
+  const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+  if (!supported) {
+    showError('ARモードが利用できません。端末・ブラウザを確認してください。');
+    return;
+  }
+
+  try {
+    xrSession = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['local'],
+      optionalFeatures: ['dom-overlay', 'hit-test'],
+      domOverlay: { root: document.getElementById('app') },
+    });
+  } catch(e) {
+    showError('ARセッションを開始できませんでした: ' + e.message);
+    return;
+  }
+
+  xrSession.addEventListener('end', onXREnd);
+  xrRefSpace = await xrSession.requestReferenceSpace('local');
+
+  startScreen.style.display = 'none';
+  instruction.style.display = 'block';
+  updateUI();
+
+  // Request device motion (iOS needs permission)
+  await requestMotionPermission();
+  startMotionUpdates();
+
+  xrSession.requestAnimationFrame(onXRFrame);
+
+  // tap -> measured in XR frame
+  document.getElementById('app').addEventListener('click', handleTap);
+}
+
+function onXREnd() {
+  xrSession = null;
+  instruction.style.display = 'none';
+  stopMotion();
+}
+
+// ── Motion / calibration ───────────────────────────────────────────────────
+
+let motionCleanup = null;
+
+async function requestMotionPermission() {
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    try { await DeviceMotionEvent.requestPermission(); } catch(e) {}
+  }
+}
+
+function startMotionUpdates() {
+  const handler = (e) => {
+    if (!e.accelerationIncludingGravity) return;
+    // Normalize to gravity unit (~9.8 m/s²)
+    // gravity.z ≈ +9.8 when phone face-down (camera pointing up)
+    const gz = (e.accelerationIncludingGravity.z || 0) / 9.81;
+    gravityZ = gz;
+    handleGravity(gz);
+  };
+  window.addEventListener('devicemotion', handler);
+  motionCleanup = () => window.removeEventListener('devicemotion', handler);
+}
+
+function stopMotion() {
+  if (motionCleanup) { motionCleanup(); motionCleanup = null; }
+}
+
+function handleGravity(gz) {
+  if (state.phase !== Phase.CALIBRATING) {
+    if (state.isCountingDown) stopCountdown();
+    return;
+  }
+  const faceDown = gz > 0.82;
+  if (faceDown && !state.isCountingDown) startCountdown();
+  else if (!faceDown && state.isCountingDown) stopCountdown();
+}
+
+function startCountdown() {
+  state.isCountingDown = true;
+  state.countdown = 3;
+  speak('さん');
+  updateUI();
+
+  state.cdTimer = setInterval(() => {
+    state.countdown -= 1;
+    updateUI();
+    if (state.countdown === 2) speak('に');
+    else if (state.countdown === 1) speak('いち');
+    if (state.countdown <= 0) {
+      clearInterval(state.cdTimer);
+      state.isCountingDown = false;
+      finishCalibration();
+    }
+  }, 1000);
+}
+
+function stopCountdown() {
+  state.isCountingDown = false;
+  clearInterval(state.cdTimer);
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  state.countdown = 3;
+  updateUI();
+}
+
+function finishCalibration() {
+  if (!xrFrame || !xrRefSpace) return;
+  // Use current viewer pose Y as floor (phone is ≈8mm thick, lying face-down)
+  const pose = xrFrame.getViewerPose(xrRefSpace);
+  if (!pose) return;
+
+  const camY = pose.transform.position.y;
+  state.floorY = camY - 0.008;
+
+  speak('はなして！');
+  vibrate([80, 120, 80, 120, 80]);
+
+  countdownEl.textContent = '✅';
+  setTimeout(() => {
+    state.phase = Phase.FIRST;
+    updateUI();
+  }, 600);
+}
+
+// ── XR render loop ─────────────────────────────────────────────────────────
+
+function onXRFrame(t, frame) {
+  xrFrame = frame;
+  xrSession.requestAnimationFrame(onXRFrame);
+
+  const pose = frame.getViewerPose(xrRefSpace);
+  if (!pose) return;
+
+  xrView     = pose.views[0];
+  xrViewport = xrSession.renderState.baseLayer
+    ? xrSession.renderState.baseLayer.getViewport(xrView)
+    : { x:0, y:0, width: canvas.width, height: canvas.height };
+
+  // Update crosshair
+  if (state.phase === Phase.FIRST || state.phase === Phase.SECOND) {
+    const hit = rayHitFloor(canvas.width/2, canvas.height/2);
+    crosshair = hit ? worldToScreen(hit) : null;
+  } else if (state.phase === Phase.HEIGHT) {
+    const hit = rayHitVerticalPlane(canvas.width/2, canvas.height/2);
+    crosshair = hit ? worldToScreen(hit) : null;
+  } else {
+    crosshair = null;
+  }
+
+  drawOverlay();
+}
+
+// ── Ray casting ────────────────────────────────────────────────────────────
+
+function worldRay(sx, sy) {
+  if (!xrView) return null;
+
+  const proj = xrView.projectionMatrix;
+  const viewMat = xrView.transform.inverse.matrix;
+
+  // NDC coords (-1..1)
+  const vw = xrViewport.width  || canvas.width;
+  const vh = xrViewport.height || canvas.height;
+  const ndcX = (sx / vw) * 2 - 1;
+  const ndcY = -((sy / vh) * 2 - 1);
+
+  // Unproject near/far via inverse projection
+  const invProj = mat4Inverse(proj);
+
+  function unproject(ndc_x, ndc_y, ndc_z) {
+    const clip = [ndc_x, ndc_y, ndc_z, 1];
+    const eye  = mat4Vec4(invProj, clip);
+    const eyeN = [eye[0]/eye[3], eye[1]/eye[3], ndc_z < 0 ? -1 : 1, 0];
+    const world = mat4Vec4(xrView.transform.matrix, eyeN);
+    return [world[0], world[1], world[2]];
+  }
+
+  const near  = unproject(ndcX, ndcY, -1);
+  const camPos = [
+    xrView.transform.position.x,
+    xrView.transform.position.y,
+    xrView.transform.position.z,
+  ];
+  const dir = normalize3(sub3(near, camPos));
+  return { origin: camPos, dir };
+}
+
+function rayHitFloor(sx, sy) {
+  const r = worldRay(sx, sy);
+  if (!r) return null;
+  const { origin: o, dir: d } = r;
+  if (Math.abs(d[1]) < 0.001) return null;
+  const t = (state.floorY - o[1]) / d[1];
+  if (t <= 0) return null;
+  return { x: o[0]+t*d[0], y: state.floorY, z: o[2]+t*d[2] };
+}
+
+function rayHitVerticalPlane(sx, sy) {
+  if (!state.first || !state.second || !xrView) return null;
+  const cx = (state.first.x + state.second.x) / 2;
+  const cz = (state.first.z + state.second.z) / 2;
+  const objCenter = [cx, state.floorY, cz];
+
+  const camPos = [xrView.transform.position.x, 0, xrView.transform.position.z];
+  const toObj  = sub3([cx, 0, cz], camPos);
+  const len    = Math.hypot(toObj[0], toObj[2]);
+  if (len < 0.01) return null;
+  const normal = [toObj[0]/len, 0, toObj[2]/len];
+
+  const r = worldRay(sx, sy);
+  if (!r) return null;
+  const { origin: o, dir: d } = r;
+
+  const denom = dot3(normal, d);
+  if (Math.abs(denom) < 0.001) return null;
+  const t = dot3(normal, sub3(objCenter, o)) / denom;
+  if (t <= 0) return null;
+  return { x: o[0]+t*d[0], y: o[1]+t*d[1], z: o[2]+t*d[2] };
+}
+
+function worldToScreen(pt) {
+  if (!xrView) return null;
+  const proj = xrView.projectionMatrix;
+  const viewMat = xrView.transform.inverse.matrix;
+
+  const eye  = mat4Vec4(viewMat, [pt.x, pt.y, pt.z, 1]);
+  const clip = mat4Vec4(proj, eye);
+  if (Math.abs(clip[3]) < 1e-6) return null;
+
+  const ndcX = clip[0] / clip[3];
+  const ndcY = clip[1] / clip[3];
+
+  const vw = xrViewport.width  || canvas.width;
+  const vh = xrViewport.height || canvas.height;
+  return {
+    sx: (ndcX + 1) / 2 * vw,
+    sy: (1 - ndcY) / 2 * vh,
+  };
+}
+
+// ── Tap handler ────────────────────────────────────────────────────────────
+
+function handleTap(e) {
+  // Ignore taps on buttons
+  if (e.target.closest('button')) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+
+  switch (state.phase) {
+    case Phase.FIRST: {
+      const pt = rayHitFloor(sx, sy);
+      if (!pt) return;
+      state.first = pt;
+      const s = worldToScreen(pt);
+      if (s) markers.push({ sx: s.sx, sy: s.sy, color: '#ff9800' });
+      vibrate(30);
+      state.phase = Phase.SECOND;
+      updateUI();
+      break;
+    }
+    case Phase.SECOND: {
+      const pt = rayHitFloor(sx, sy);
+      if (!pt) return;
+      state.second = pt;
+      const s = worldToScreen(pt);
+      if (s) markers.push({ sx: s.sx, sy: s.sy, color: '#ff9800' });
+
+      // Draw floor rectangle
+      const corners = [
+        { x: state.first.x,  y: state.floorY, z: state.first.z  },
+        { x: state.second.x, y: state.floorY, z: state.first.z  },
+        { x: state.second.x, y: state.floorY, z: state.second.z },
+        { x: state.first.x,  y: state.floorY, z: state.second.z },
+      ];
+      for (let i=0; i<4; i++) {
+        const a = worldToScreen(corners[i]);
+        const b = worldToScreen(corners[(i+1)%4]);
+        if (a && b) lines.push({ sx1:a.sx, sy1:a.sy, sx2:b.sx, sy2:b.sy, color:'#ffeb3b' });
+      }
+      vibrate(30);
+      state.phase = Phase.HEIGHT;
+      updateUI();
+      break;
+    }
+    case Phase.HEIGHT: {
+      const pt = rayHitVerticalPlane(sx, sy);
+      if (!pt) return;
+      const s = worldToScreen(pt);
+      const bottom = { x: pt.x, y: state.floorY, z: pt.z };
+      const bs = worldToScreen(bottom);
+      if (s)  markers.push({ sx: s.sx, sy: s.sy, color: '#e91e63' });
+      if (s && bs) lines.push({ sx1: s.sx, sy1: s.sy, sx2: bs.sx, sy2: bs.sy, color: '#9c27b0' });
+      vibrate([40, 60, 40]);
+      showResult(pt);
+      break;
+    }
+  }
+}
+
+// ── Result ─────────────────────────────────────────────────────────────────
+
+function showResult(topPt) {
+  if (!state.first || !state.second) return;
+
+  const dx = Math.abs(state.second.x - state.first.x) * 100;
+  const dz = Math.abs(state.second.z - state.first.z) * 100;
+  const dims = [dx, dz].sort((a,b) => b-a);
+  const w = dims[0], l = dims[1];
+  const h = Math.max((topPt.y - state.floorY) * 100, 0.5);
+
+  state.phase = Phase.COMPLETE;
+  updateUI();
+
+  document.getElementById('dims-text').textContent =
+    `${w.toFixed(1)} × ${l.toFixed(1)} × ${h.toFixed(1)} cm`;
+
+  const recs = recommend(w, l, h);
+  const listEl = document.getElementById('ship-list');
+  listEl.innerHTML = '';
+
+  if (recs.length === 0) {
+    listEl.innerHTML = '<div class="ship-item no-fit"><span class="ship-name">160サイズ超え（要梱包確認）</span></div>';
+  } else {
+    // Show best 3 + cheapest of each service
+    const shown = recs.slice(0, 4);
+    for (const s of shown) {
+      const div = document.createElement('div');
+      div.className = 'ship-item';
+      div.innerHTML = `<span class="ship-name">${s.name}</span><span class="ship-price">¥${s.price}</span>`;
+      listEl.appendChild(div);
+    }
+  }
+
+  speak(`縦${w.toFixed(0)}、横${l.toFixed(0)}、高さ${h.toFixed(0)}センチです`);
+
+  resultEl.style.display = 'flex';
+  instruction.style.display = 'none';
+}
+
+function resetMeasurement() {
+  state = {
+    phase: Phase.CALIBRATING,
+    floorY: 0,
+    first: null,
+    second: null,
+    topPt: null,
+    countdown: 3,
+    isCountingDown: false,
+    cdTimer: null,
+  };
+  markers.length = 0;
+  lines.length   = 0;
+  crosshair = null;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  resultEl.style.display = 'none';
+  instruction.style.display = 'block';
+  updateUI();
+}
+
+document.getElementById('reset-btn').addEventListener('click', resetMeasurement);
+document.getElementById('start-btn').addEventListener('click', startXR);
+
+// ── Math helpers ───────────────────────────────────────────────────────────
+
+function mat4Vec4(m, v) {
+  // column-major (WebGL/WebXR convention)
+  return [
+    m[0]*v[0] + m[4]*v[1] + m[8]*v[2]  + m[12]*v[3],
+    m[1]*v[0] + m[5]*v[1] + m[9]*v[2]  + m[13]*v[3],
+    m[2]*v[0] + m[6]*v[1] + m[10]*v[2] + m[14]*v[3],
+    m[3]*v[0] + m[7]*v[1] + m[11]*v[2] + m[15]*v[3],
+  ];
+}
+
+function mat4Inverse(m) {
+  // 4x4 inverse (column-major)
+  const [
+    a00,a01,a02,a03, a10,a11,a12,a13,
+    a20,a21,a22,a23, a30,a31,a32,a33
+  ] = m;
+
+  const b00 = a00*a11 - a01*a10, b01 = a00*a12 - a02*a10,
+        b02 = a00*a13 - a03*a10, b03 = a01*a12 - a02*a11,
+        b04 = a01*a13 - a03*a11, b05 = a02*a13 - a03*a12,
+        b06 = a20*a31 - a21*a30, b07 = a20*a32 - a22*a30,
+        b08 = a20*a33 - a23*a30, b09 = a21*a32 - a22*a31,
+        b10 = a21*a33 - a23*a31, b11 = a22*a33 - a23*a32;
+
+  const det = b00*b11 - b01*b10 + b02*b09 + b03*b08 - b04*b07 + b05*b06;
+  if (!det) return m;
+  const d = 1 / det;
+
+  return [
+    (a11*b11 - a12*b10 + a13*b09)*d,
+    (a02*b10 - a01*b11 - a03*b09)*d,
+    (a31*b05 - a32*b04 + a33*b03)*d,
+    (a22*b04 - a21*b05 - a23*b03)*d,
+    (a12*b08 - a10*b11 - a13*b07)*d,
+    (a00*b11 - a02*b08 + a03*b07)*d,
+    (a32*b02 - a30*b05 - a33*b01)*d,
+    (a20*b05 - a22*b02 + a23*b01)*d,
+    (a10*b10 - a11*b08 + a13*b06)*d,
+    (a01*b08 - a00*b10 - a03*b06)*d,
+    (a30*b04 - a31*b02 + a33*b00)*d,
+    (a21*b02 - a20*b04 - a23*b00)*d,
+    (a11*b07 - a10*b09 - a12*b06)*d,
+    (a00*b09 - a01*b07 + a02*b06)*d,
+    (a31*b01 - a30*b03 - a32*b00)*d,
+    (a20*b03 - a21*b01 + a22*b00)*d,
+  ];
+}
+
+function normalize3(v) {
+  const l = Math.hypot(v[0], v[1], v[2]);
+  return l > 0 ? [v[0]/l, v[1]/l, v[2]/l] : v;
+}
+function sub3(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+function dot3(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+</script>
+</body>
+</html>
