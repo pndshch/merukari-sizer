@@ -1,6 +1,7 @@
 import UIKit
 import ARKit
 import SceneKit
+import CoreMotion
 import Combine
 
 final class ARViewController: UIViewController, ARSCNViewDelegate {
@@ -11,9 +12,13 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
     private let viewModel: MeasurementViewModel
     private var cancellables = Set<AnyCancellable>()
     private var overlayNodes: [SCNNode] = []
-    private var planeNodes: [UUID: SCNNode] = [:]
     private var crosshairNode: SCNNode?
-    private var firstMarkerNode: SCNNode?
+
+    // Calibration
+    private let motionManager = CMMotionManager()
+    private var calibrationTimer: Timer?
+    private var countdownValue = 3
+    private var isCountingDown = false
 
     // MARK: - Init
 
@@ -37,11 +42,14 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         startARSession()
+        startMotionUpdates()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         sceneView.session.pause()
+        motionManager.stopDeviceMotionUpdates()
+        calibrationTimer?.invalidate()
     }
 
     // MARK: - Setup
@@ -62,7 +70,7 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
 
     private func setupCrosshair() {
         let sphere = SCNSphere(radius: 0.008)
-        sphere.firstMaterial?.diffuse.contents = UIColor.white.withAlphaComponent(0.8)
+        sphere.firstMaterial?.diffuse.contents = UIColor.white.withAlphaComponent(0.85)
         sphere.firstMaterial?.lightingModel = .constant
         crosshairNode = SCNNode(geometry: sphere)
         crosshairNode?.isHidden = true
@@ -77,68 +85,128 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
     private func bindViewModel() {
         viewModel.$phase
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] phase in
-                self?.handlePhaseChange(phase)
-            }
+            .sink { [weak self] phase in self?.handlePhaseChange(phase) }
             .store(in: &cancellables)
     }
 
     private func startARSession() {
         let config = ARWorldTrackingConfiguration()
-        config.planeDetection = [.horizontal]
-        config.environmentTexturing = .automatic
+        config.planeDetection = []          // 平面検出不要
+        config.environmentTexturing = .none
         sceneView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
+        sceneView.debugOptions = []
     }
 
-    // MARK: - Phase handling
+    private func startMotionUpdates() {
+        guard motionManager.isDeviceMotionAvailable else { return }
+        motionManager.deviceMotionUpdateInterval = 0.1
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
+            guard let self, let motion else { return }
+            self.handleMotionUpdate(motion)
+        }
+    }
+
+    // MARK: - Phase
 
     private func handlePhaseChange(_ phase: MeasurementPhase) {
         switch phase {
-        case .detectingPlane:
+        case .calibrating:
             clearOverlay()
-            planeNodes.values.forEach { $0.isHidden = false }
             crosshairNode?.isHidden = true
-            startARSession()
+            isCountingDown = false
+            calibrationTimer?.invalidate()
         case .tappingFirstCorner:
-            planeNodes.values.forEach { $0.isHidden = false }
             crosshairNode?.isHidden = false
+            haptic(.light)
         case .tappingSecondCorner:
             crosshairNode?.isHidden = false
+            haptic(.selection)
         case .tappingHeight:
-            planeNodes.values.forEach { $0.isHidden = true }
             crosshairNode?.isHidden = false
+            haptic(.selection)
         case .complete:
             crosshairNode?.isHidden = true
+            haptic(.success)
         }
+    }
+
+    // MARK: - Calibration (gravity detection)
+
+    private func handleMotionUpdate(_ motion: CMDeviceMotion) {
+        guard viewModel.phase == .calibrating else {
+            if isCountingDown { stopCountdown() }
+            return
+        }
+
+        // gravity.z ≈ +1 → 画面下向き（カメラが上を向いている = 机に伏せた状態）
+        let isFaceDown = motion.gravity.z > 0.82
+
+        if isFaceDown && !isCountingDown {
+            startCountdown()
+        } else if !isFaceDown && isCountingDown {
+            stopCountdown()
+        }
+    }
+
+    private func startCountdown() {
+        isCountingDown = true
+        countdownValue = 3
+        Task { @MainActor in viewModel.calibrationCountdown = 3 }
+
+        calibrationTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] t in
+            guard let self else { t.invalidate(); return }
+            self.countdownValue -= 1
+            Task { @MainActor in self.viewModel.calibrationCountdown = self.countdownValue }
+
+            if self.countdownValue <= 0 {
+                t.invalidate()
+                self.isCountingDown = false
+                self.finishCalibration()
+            }
+        }
+    }
+
+    private func stopCountdown() {
+        isCountingDown = false
+        calibrationTimer?.invalidate()
+        countdownValue = 3
+        Task { @MainActor in viewModel.calibrationCountdown = 3 }
+    }
+
+    private func finishCalibration() {
+        guard let frame = sceneView.session.currentFrame else { return }
+        // 机に伏せた状態: カメラ位置 ≈ 床 + 本体厚み(8mm)
+        let cameraY = frame.camera.transform.columns.3.y
+        let floorY  = cameraY - 0.008
+        haptic(.light)
+        Task { @MainActor in viewModel.calibrated(floorY: floorY) }
     }
 
     // MARK: - Tap
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-        let location = gesture.location(in: sceneView)
+        let loc = gesture.location(in: sceneView)
 
         Task { @MainActor in
             switch viewModel.phase {
             case .tappingFirstCorner:
-                guard let point = raycastOnPlane(at: location) else { return }
-                placeMarker(at: point, color: .systemOrange, size: 0.012)
-                firstMarkerNode = overlayNodes.last
-                viewModel.tapFirst(point)
+                guard let pt = rayHitFloor(at: loc) else { return }
+                placeMarker(at: pt, color: .systemOrange)
+                viewModel.tapFirst(pt)
 
             case .tappingSecondCorner:
-                guard let point = raycastOnPlane(at: location),
+                guard let pt = rayHitFloor(at: loc),
                       let first = viewModel.firstCorner else { return }
-                placeMarker(at: point, color: .systemOrange, size: 0.012)
-                drawRectangle(from: first, to: point, at: first.y)
-                viewModel.tapSecond(point)
+                placeMarker(at: pt, color: .systemOrange)
+                drawRectangle(from: first, to: pt, floorY: viewModel.floorY)
+                viewModel.tapSecond(pt)
 
             case .tappingHeight:
-                guard let point = raycastAny(at: location) else { return }
-                let floorY = viewModel.floorY
-                let bottom = SIMD3<Float>(point.x, floorY, point.z)
-                placeMarker(at: point, color: .systemRed, size: 0.012)
-                addLine(from: bottom, to: point, color: .systemPurple)
-                viewModel.tapTop(point)
+                guard let pt = rayHitVerticalPlaneAtObject(at: loc) else { return }
+                let bottom = SIMD3<Float>(pt.x, viewModel.floorY, pt.z)
+                placeMarker(at: pt, color: .systemRed)
+                addLine(from: bottom, to: pt, color: .systemPurple)
+                viewModel.tapTop(pt)
 
             default:
                 break
@@ -146,72 +214,74 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
         }
     }
 
-    // MARK: - Raycasting
+    // MARK: - Ray casting (SCNView unprojection)
 
-    private func raycastOnPlane(at location: CGPoint) -> SIMD3<Float>? {
-        if let query = sceneView.raycastQuery(from: location, allowing: .existingPlaneGeometry, alignment: .horizontal),
-           let result = sceneView.session.raycast(query).first {
-            return result.worldTransform.translation
-        }
-        if let query = sceneView.raycastQuery(from: location, allowing: .estimatedPlane, alignment: .horizontal),
-           let result = sceneView.session.raycast(query).first {
-            return result.worldTransform.translation
-        }
-        return nil
+    /// スクリーン座標 → ワールド空間のレイ（origin, normalized direction）
+    private func worldRay(at screenPoint: CGPoint) -> (origin: SIMD3<Float>, dir: SIMD3<Float>) {
+        let near = sceneView.unprojectPoint(SCNVector3(Float(screenPoint.x), Float(screenPoint.y), 0))
+        let far  = sceneView.unprojectPoint(SCNVector3(Float(screenPoint.x), Float(screenPoint.y), 1))
+        let o = SIMD3<Float>(near.x, near.y, near.z)
+        let d = normalize(SIMD3<Float>(far.x - near.x, far.y - near.y, far.z - near.z))
+        return (o, d)
     }
 
-    private func raycastAny(at location: CGPoint) -> SIMD3<Float>? {
-        if let query = sceneView.raycastQuery(from: location, allowing: .existingPlaneGeometry, alignment: .any),
-           let result = sceneView.session.raycast(query).first {
-            return result.worldTransform.translation
-        }
-        if let query = sceneView.raycastQuery(from: location, allowing: .estimatedPlane, alignment: .any),
-           let result = sceneView.session.raycast(query).first {
-            return result.worldTransform.translation
-        }
-        return nil
+    /// レイ × 水平面 (Y = floorY) の交点
+    private func rayHitFloor(at screenPoint: CGPoint) -> SIMD3<Float>? {
+        let (origin, dir) = worldRay(at: screenPoint)
+        guard abs(dir.y) > 0.001 else { return nil }
+        let t = (viewModel.floorY - origin.y) / dir.y
+        guard t > 0 else { return nil }
+        return origin + t * dir
+    }
+
+    /// レイ × 物体中心を通る鉛直面の交点（高さ計測用）
+    private func rayHitVerticalPlaneAtObject(at screenPoint: CGPoint) -> SIMD3<Float>? {
+        guard let p1 = viewModel.firstCorner,
+              let p2 = viewModel.secondCorner,
+              let frame = sceneView.session.currentFrame else { return nil }
+
+        let objCenter = SIMD3<Float>((p1.x + p2.x) / 2, viewModel.floorY, (p1.z + p2.z) / 2)
+        let camXZ = SIMD3<Float>(frame.camera.transform.columns.3.x, 0, frame.camera.transform.columns.3.z)
+        let toCam = camXZ - SIMD3<Float>(objCenter.x, 0, objCenter.z)
+        guard simd_length(toCam) > 0.01 else { return nil }
+        let normal = normalize(toCam)
+
+        let (origin, dir) = worldRay(at: screenPoint)
+        let denom = simd_dot(normal, dir)
+        guard abs(denom) > 0.001 else { return nil }
+        let t = simd_dot(normal, objCenter - origin) / denom
+        guard t > 0 else { return nil }
+        return origin + t * dir
     }
 
     // MARK: - AR Visuals
 
-    private func placeMarker(at position: SIMD3<Float>, color: UIColor, size: CGFloat) {
-        let sphere = SCNSphere(radius: size)
+    private func placeMarker(at pos: SIMD3<Float>, color: UIColor) {
+        let sphere = SCNSphere(radius: 0.012)
         sphere.firstMaterial?.diffuse.contents = color
         sphere.firstMaterial?.lightingModel = .constant
         let node = SCNNode(geometry: sphere)
-        node.simdWorldPosition = position
+        node.simdWorldPosition = pos
         sceneView.scene.rootNode.addChildNode(node)
         overlayNodes.append(node)
     }
 
-    private func drawRectangle(from p1: SIMD3<Float>, to p2: SIMD3<Float>, at y: Float) {
+    private func drawRectangle(from p1: SIMD3<Float>, to p2: SIMD3<Float>, floorY y: Float) {
         let corners: [SIMD3<Float>] = [
-            SIMD3(p1.x, y, p1.z),
-            SIMD3(p2.x, y, p1.z),
-            SIMD3(p2.x, y, p2.z),
-            SIMD3(p1.x, y, p2.z),
+            SIMD3(p1.x, y, p1.z), SIMD3(p2.x, y, p1.z),
+            SIMD3(p2.x, y, p2.z), SIMD3(p1.x, y, p2.z),
         ]
-        for i in 0..<4 {
-            addLine(from: corners[i], to: corners[(i + 1) % 4], color: .systemYellow)
-        }
+        for i in 0..<4 { addLine(from: corners[i], to: corners[(i + 1) % 4], color: .systemYellow) }
     }
 
     private func addLine(from start: SIMD3<Float>, to end: SIMD3<Float>, color: UIColor) {
-        let startVec = SCNVector3(start.x, start.y, start.z)
-        let endVec = SCNVector3(end.x, end.y, end.z)
-        let source = SCNGeometrySource(vertices: [startVec, endVec])
-        let indices: [UInt16] = [0, 1]
-        let data = Data(bytes: indices, count: MemoryLayout<UInt16>.size * indices.count)
-        let element = SCNGeometryElement(
-            data: data,
-            primitiveType: .line,
-            primitiveCount: 1,
-            bytesPerIndex: MemoryLayout<UInt16>.size
-        )
-        let geometry = SCNGeometry(sources: [source], elements: [element])
-        geometry.firstMaterial?.diffuse.contents = color
-        geometry.firstMaterial?.lightingModel = .constant
-        let node = SCNNode(geometry: geometry)
+        let src = SCNGeometrySource(vertices: [SCNVector3(start), SCNVector3(end)])
+        let data = Data(bytes: [UInt16(0), UInt16(1)], count: 4)
+        let elem = SCNGeometryElement(data: data, primitiveType: .line, primitiveCount: 1, bytesPerIndex: 2)
+        let geo = SCNGeometry(sources: [src], elements: [elem])
+        geo.firstMaterial?.diffuse.contents = color
+        geo.firstMaterial?.lightingModel = .constant
+        let node = SCNNode(geometry: geo)
         sceneView.scene.rootNode.addChildNode(node)
         overlayNodes.append(node)
     }
@@ -219,58 +289,20 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
     private func clearOverlay() {
         overlayNodes.forEach { $0.removeFromParentNode() }
         overlayNodes.removeAll()
-        firstMarkerNode = nil
     }
 
-    // MARK: - ARSCNViewDelegate
+    // MARK: - ARSCNViewDelegate (crosshair tracking)
 
-    func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
-        guard let planeAnchor = anchor as? ARPlaneAnchor,
-              planeAnchor.alignment == .horizontal else { return }
-
-        let width = CGFloat(planeAnchor.planeExtent.width)
-        let height = CGFloat(planeAnchor.planeExtent.height)
-        let plane = SCNPlane(width: width, height: height)
-        plane.firstMaterial?.diffuse.contents = UIColor.systemGreen.withAlphaComponent(0.25)
-        plane.firstMaterial?.isDoubleSided = true
-
-        let planeNode = SCNNode(geometry: plane)
-        planeNode.simdPosition = SIMD3(planeAnchor.center.x, 0, planeAnchor.center.z)
-        planeNode.eulerAngles.x = -.pi / 2
-        node.addChildNode(planeNode)
-        planeNodes[anchor.identifier] = planeNode
-
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            let worldY = planeAnchor.transform.columns.3.y
-            self.viewModel.planeDetected(floorY: worldY)
-        }
-    }
-
-    func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
-        guard let planeAnchor = anchor as? ARPlaneAnchor,
-              planeAnchor.alignment == .horizontal,
-              let planeNode = planeNodes[anchor.identifier],
-              let plane = planeNode.geometry as? SCNPlane else { return }
-
-        plane.width = CGFloat(planeAnchor.planeExtent.width)
-        plane.height = CGFloat(planeAnchor.planeExtent.height)
-        planeNode.simdPosition = SIMD3(planeAnchor.center.x, 0, planeAnchor.center.z)
-    }
-
-    // Live crosshair tracking
     func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
-        guard viewModel.phase != .detectingPlane,
-              viewModel.phase != .complete else { return }
-
+        guard viewModel.phase != .calibrating, viewModel.phase != .complete else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             let center = CGPoint(x: self.sceneView.bounds.midX, y: self.sceneView.bounds.midY)
             let hit: SIMD3<Float>?
             if self.viewModel.phase == .tappingHeight {
-                hit = self.raycastAny(at: center)
+                hit = self.rayHitVerticalPlaneAtObject(at: center)
             } else {
-                hit = self.raycastOnPlane(at: center)
+                hit = self.rayHitFloor(at: center)
             }
             if let pos = hit {
                 self.crosshairNode?.isHidden = false
@@ -280,12 +312,19 @@ final class ARViewController: UIViewController, ARSCNViewDelegate {
             }
         }
     }
+
+    // MARK: - Haptics
+
+    private func haptic(_ style: HapticStyle) {
+        switch style {
+        case .light:   UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        case .selection: UISelectionFeedbackGenerator().selectionChanged()
+        case .success: UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
+    }
+    private enum HapticStyle { case light, selection, success }
 }
 
-// MARK: - simd_float4x4 helper
-
-private extension simd_float4x4 {
-    var translation: SIMD3<Float> {
-        SIMD3(columns.3.x, columns.3.y, columns.3.z)
-    }
+private extension SCNVector3 {
+    init(_ v: SIMD3<Float>) { self.init(v.x, v.y, v.z) }
 }

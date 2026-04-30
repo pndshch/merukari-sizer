@@ -16,6 +16,7 @@
 		9AA10542A3F97CB550307F4B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A852C69E0856916BC3A3A21E /* ContentView.swift */; };
 		B4B82BDAE6414323C3AA6C33 /* ARViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3CD00CBCBBAB6D7180DA729 /* ARViewController.swift */; };
 		CC1C4F9194EBBDE6BDAC5C43 /* MercariShipping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668733300E3464F1DB1E0E2A /* MercariShipping.swift */; };
+		D742EE345088183211E8D809 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B196EC8C7485B03C8B7B4F6C /* OnboardingView.swift */; };
 		FB5F793CA69B5019E2321C4E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E6AFC0C45425E27CA99965CD /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +28,7 @@
 		7D0056FC02B0989B15016F49 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A0C4222057BECF8A8F029B5C /* MercariSizer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MercariSizer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A852C69E0856916BC3A3A21E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B196EC8C7485B03C8B7B4F6C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		B3CD00CBCBBAB6D7180DA729 /* ARViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARViewController.swift; sourceTree = "<group>"; };
 		C81C3119ADC1D2FDE733949B /* InstructionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionView.swift; sourceTree = "<group>"; };
 		E6AFC0C45425E27CA99965CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 				FE9E42D7AA7F5AB131F90DE0 /* ARMeasureView.swift */,
 				A852C69E0856916BC3A3A21E /* ContentView.swift */,
 				C81C3119ADC1D2FDE733949B /* InstructionView.swift */,
+				B196EC8C7485B03C8B7B4F6C /* OnboardingView.swift */,
 				211775B3F26CED9CB4EA7A63 /* ResultView.swift */,
 			);
 			path = Views;
@@ -176,6 +179,7 @@
 				CC1C4F9194EBBDE6BDAC5C43 /* MercariShipping.swift in Sources */,
 				3ADB0CB484CC0B3705F0CE4B /* MercariSizerApp.swift in Sources */,
 				0B8C7938C593E578105B0D68 /* ObjectMeasurement.swift in Sources */,
+				D742EE345088183211E8D809 /* OnboardingView.swift in Sources */,
 				77A6D999E189E8D09866CC0B /* ResultView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

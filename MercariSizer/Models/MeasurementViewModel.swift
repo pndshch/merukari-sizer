@@ -3,7 +3,7 @@ import Combine
 import simd
 
 enum MeasurementPhase: Equatable {
-    case detectingPlane
+    case calibrating    // 机に置いて床高さを記録
     case tappingFirstCorner
     case tappingSecondCorner
     case tappingHeight
@@ -12,8 +12,9 @@ enum MeasurementPhase: Equatable {
 
 @MainActor
 final class MeasurementViewModel: ObservableObject {
-    @Published var phase: MeasurementPhase = .detectingPlane
+    @Published var phase: MeasurementPhase = .calibrating
     @Published var measurement: ObjectMeasurement?
+    @Published var calibrationCountdown: Int = 3  // 3…2…1
 
     private(set) var floorY: Float = 0
     private(set) var firstCorner: SIMD3<Float>?
@@ -21,10 +22,10 @@ final class MeasurementViewModel: ObservableObject {
 
     var instructionText: String {
         switch phase {
-        case .detectingPlane:
-            return "物体を平らな面に置いて\nカメラをゆっくり動かしてください"
+        case .calibrating:
+            return "画面を下にして\n机の上に置いてください"
         case .tappingFirstCorner:
-            return "上から見て、物体の\n一方の角をタップ"
+            return "持ち上げて、上から\n物体の一方の角をタップ"
         case .tappingSecondCorner:
             return "対角の角をタップ"
         case .tappingHeight:
@@ -36,15 +37,15 @@ final class MeasurementViewModel: ObservableObject {
 
     var phaseIndex: Int {
         switch phase {
-        case .detectingPlane: return 0
+        case .calibrating: return 0
         case .tappingFirstCorner, .tappingSecondCorner: return 1
         case .tappingHeight: return 2
         case .complete: return 3
         }
     }
 
-    func planeDetected(floorY y: Float) {
-        guard phase == .detectingPlane else { return }
+    func calibrated(floorY y: Float) {
+        guard phase == .calibrating else { return }
         floorY = y
         phase = .tappingFirstCorner
     }
@@ -61,9 +62,7 @@ final class MeasurementViewModel: ObservableObject {
 
         let dx = abs(point.x - first.x) * 100
         let dz = abs(point.z - first.z) * 100
-        let dims = [dx, dz].sorted(by: >)
-
-        _ = dims  // store partial so next tap finishes
+        _ = [dx, dz].sorted(by: >)  // stored via secondCorner
         phase = .tappingHeight
     }
 
@@ -76,7 +75,7 @@ final class MeasurementViewModel: ObservableObject {
         let dz = abs(second.z - first.z) * 100
         let dims = [dx, dz].sorted(by: >)
 
-        let h = max(abs(point.y - floorY) * 100, 0.5)
+        let h = max((point.y - floorY) * 100, 0.5)
 
         measurement = ObjectMeasurement(
             width: dims[0],
@@ -87,10 +86,11 @@ final class MeasurementViewModel: ObservableObject {
     }
 
     func reset() {
-        phase = .detectingPlane
+        phase = .calibrating
         measurement = nil
         firstCorner = nil
         secondCorner = nil
         floorY = 0
+        calibrationCountdown = 3
     }
 }
