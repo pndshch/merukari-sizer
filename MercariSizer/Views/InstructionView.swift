@@ -25,10 +25,8 @@ struct InstructionView: View {
         switch viewModel.phase {
         case .calibrating:
             CalibrationGuide(countdown: viewModel.calibrationCountdown)
-        case .tappingFirstCorner:
-            PhaseIcon(symbolName: "hand.tap.fill", color: .orange, label: "1点目")
-        case .tappingSecondCorner:
-            PhaseIcon(symbolName: "hand.tap.fill", color: .orange, label: "2点目")
+        case .scanning:
+            AutoDetectGuide(isDetecting: viewModel.isDetecting)
         case .tappingHeight:
             PhaseIcon(symbolName: "arrow.up.and.down.circle.fill", color: .purple, label: "高さ")
         case .complete:
@@ -109,7 +107,59 @@ private struct PhaseIcon: View {
     }
 }
 
-// MARK: - Scanning animation (保持：平面スキャン不要になったが残す)
+// MARK: - Auto detect guide
+
+private struct AutoDetectGuide: View {
+    let isDetecting: Bool
+    @State private var spin = false
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(isDetecting ? Color.green : Color.white.opacity(0.4), lineWidth: 2)
+                    .frame(width: 44, height: 36)
+                    .animation(.easeInOut(duration: 0.3), value: isDetecting)
+
+                // corner brackets
+                ForEach(0..<4, id: \.self) { i in
+                    let flip = CGSize(width: i < 2 ? 1 : -1, height: i % 2 == 0 ? 1 : -1)
+                    Path { p in
+                        p.move(to: CGPoint(x: 0, y: 7))
+                        p.addLine(to: .zero)
+                        p.addLine(to: CGPoint(x: 7, y: 0))
+                    }
+                    .stroke(isDetecting ? Color.green : Color.white.opacity(0.6), lineWidth: 2)
+                    .frame(width: 44, height: 36)
+                    .scaleEffect(x: flip.width, y: flip.height)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                if isDetecting {
+                    Text("物体を検出中…")
+                        .font(.caption.bold())
+                        .foregroundColor(.green)
+                } else {
+                    Text("物体を探しています")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .fill(Color.white.opacity(spin ? 0.9 : 0.2))
+                                .frame(width: 5, height: 5)
+                                .animation(.easeInOut(duration: 0.6).repeatForever().delay(Double(i) * 0.2), value: spin)
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear { spin = true }
+    }
+}
+
+// MARK: - Scanning animation (unused, kept for reference)
 
 private struct ScanningGuide: View {
     @State private var pulse = false

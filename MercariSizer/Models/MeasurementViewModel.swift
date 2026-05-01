@@ -4,9 +4,8 @@ import simd
 
 enum MeasurementPhase: Equatable {
     case calibrating    // 机に置いて床高さを記録
-    case tappingFirstCorner
-    case tappingSecondCorner
-    case tappingHeight
+    case scanning       // Vision が上面矩形を自動検出
+    case tappingHeight  // 最上部を1タップ
     case complete
 }
 
@@ -14,7 +13,8 @@ enum MeasurementPhase: Equatable {
 final class MeasurementViewModel: ObservableObject {
     @Published var phase: MeasurementPhase = .calibrating
     @Published var measurement: ObjectMeasurement?
-    @Published var calibrationCountdown: Int = 3  // 3…2…1
+    @Published var calibrationCountdown: Int = 3
+    @Published var isDetecting: Bool = false  // Vision が矩形を捉えているか
 
     private(set) var floorY: Float = 0
     private(set) var firstCorner: SIMD3<Float>?
@@ -24,10 +24,8 @@ final class MeasurementViewModel: ObservableObject {
         switch phase {
         case .calibrating:
             return "画面を下にして\n机の上に置いてください"
-        case .tappingFirstCorner:
-            return "持ち上げて、上から\n物体の一方の角をタップ"
-        case .tappingSecondCorner:
-            return "対角の角をタップ"
+        case .scanning:
+            return "持ち上げて、上から\n物体全体が映るように構えてください"
         case .tappingHeight:
             return "横から見て\n物体の最上部をタップ"
         case .complete:
@@ -38,31 +36,22 @@ final class MeasurementViewModel: ObservableObject {
     var phaseIndex: Int {
         switch phase {
         case .calibrating: return 0
-        case .tappingFirstCorner, .tappingSecondCorner: return 1
+        case .scanning:    return 1
         case .tappingHeight: return 2
-        case .complete: return 3
+        case .complete:    return 3
         }
     }
 
     func calibrated(floorY y: Float) {
         guard phase == .calibrating else { return }
         floorY = y
-        phase = .tappingFirstCorner
+        phase = .scanning
     }
 
-    func tapFirst(_ point: SIMD3<Float>) {
-        guard phase == .tappingFirstCorner else { return }
-        firstCorner = point
-        phase = .tappingSecondCorner
-    }
-
-    func tapSecond(_ point: SIMD3<Float>) {
-        guard phase == .tappingSecondCorner, let first = firstCorner else { return }
-        secondCorner = point
-
-        let dx = abs(point.x - first.x) * 100
-        let dz = abs(point.z - first.z) * 100
-        _ = [dx, dz].sorted(by: >)  // stored via secondCorner
+    func confirmedTopRect(first: SIMD3<Float>, second: SIMD3<Float>) {
+        guard phase == .scanning else { return }
+        firstCorner = first
+        secondCorner = second
         phase = .tappingHeight
     }
 
@@ -71,17 +60,12 @@ final class MeasurementViewModel: ObservableObject {
               let first = firstCorner,
               let second = secondCorner else { return }
 
-        let dx = abs(second.x - first.x) * 100
-        let dz = abs(second.z - first.z) * 100
+        let dx   = abs(second.x - first.x) * 100
+        let dz   = abs(second.z - first.z) * 100
         let dims = [dx, dz].sorted(by: >)
+        let h    = max((point.y - floorY) * 100, 0.5)
 
-        let h = max((point.y - floorY) * 100, 0.5)
-
-        measurement = ObjectMeasurement(
-            width: dims[0],
-            length: dims[1],
-            height: h
-        )
+        measurement = ObjectMeasurement(width: dims[0], length: dims[1], height: h)
         phase = .complete
     }
 
@@ -92,5 +76,6 @@ final class MeasurementViewModel: ObservableObject {
         secondCorner = nil
         floorY = 0
         calibrationCountdown = 3
+        isDetecting = false
     }
 }
